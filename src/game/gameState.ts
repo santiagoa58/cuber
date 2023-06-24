@@ -61,6 +61,7 @@ const getGameState = (playerOptions?: PlayerOptions) => {
     context,
     player,
     enemies,
+    score: 0,
   };
 };
 

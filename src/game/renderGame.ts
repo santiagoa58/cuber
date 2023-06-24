@@ -17,15 +17,35 @@ const moveEnemy = (enemy: Player, offset: { x?: number; y?: number }) => {
   enemy.position.copy(newPosition);
 };
 
+const getScoreElement = () => {
+  const scoreElement = document.getElementById("score");
+  if (scoreElement) {
+    return scoreElement;
+  }
+  // create score element if it doesn't exist
+  const newScoreElement = document.createElement("div");
+  newScoreElement.id = "score";
+  document.body.appendChild(newScoreElement);
+  return newScoreElement;
+};
+
+const updateScore = (gameState: GameState, newScore: number) => {
+  gameState.score = newScore;
+  const scoreElement = getScoreElement();
+  scoreElement.textContent = `Score: ${gameState.score}`;
+};
+
 const renderMovingEnemies = (gameState: GameState) => {
   // move enemies
   gameState.enemies.getEnemies().forEach((enemy) => {
     moveEnemy(enemy, { y: enemy.userData.speed });
-    if (
-      isPlayerOutOfBounds(enemy, gameState.context) ||
-      checkCollision(gameState.player.getPlayer(), enemy)
-    ) {
+    const hasCollision = checkCollision(gameState.player.getPlayer(), enemy);
+    if (isPlayerOutOfBounds(enemy, gameState.context) || hasCollision) {
       gameState.enemies.removeEnemyFromScene(gameState.context, enemy);
+    }
+    // update score
+    if (hasCollision) {
+      updateScore(gameState, gameState.score + 1);
     }
   });
 };
