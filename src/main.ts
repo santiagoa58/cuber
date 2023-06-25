@@ -1,11 +1,11 @@
 import "./style.css";
 import getGameState, { GameState } from "./game/gameState";
-import { getMovePlayerEventListeners } from "./player/controls";
+import addPlayerControlEventListeners from "./player/controls";
 import renderGame from "./game/renderGame";
 import { getCameraBounds } from "./positionUtils";
 
 const handleWindowResize = (gameState: GameState) => {
-  window.addEventListener("resize", (_event) => {
+  const onWindowResize = () => {
     const gameContext = gameState.context;
     const width = window.innerWidth;
     const height = window.innerHeight;
@@ -14,14 +14,25 @@ const handleWindowResize = (gameState: GameState) => {
     gameContext.renderer.setSize(width, height);
     gameState.player.updatePlayerPosition(gameContext, previousCameraBounds);
     gameState.enemies.updateEnemiesPosition(gameContext, previousCameraBounds);
-  });
+  };
+  window.addEventListener("resize", onWindowResize);
+
+  return () => {
+    window.removeEventListener("resize", onWindowResize);
+  };
 };
 
 const initializeEventListeners = (gameState: GameState) => {
   // make canvas responsive
-  handleWindowResize(gameState);
+  const removeWindowResizeEventListeners = handleWindowResize(gameState);
   // add event listeners for player movement
-  document.addEventListener("keydown", getMovePlayerEventListeners(gameState));
+  const removePlayerControlEventListeners =
+    addPlayerControlEventListeners(gameState);
+
+  return () => {
+    removeWindowResizeEventListeners();
+    removePlayerControlEventListeners();
+  };
 };
 
 const startGame = (): GameState => {
@@ -35,7 +46,6 @@ const startGame = (): GameState => {
 const main = () => {
   const gameState = startGame();
   gameState.enemies.spawnEnemiesAtRegularInterval(gameState.context);
-  console.log(gameState);
 };
 
 main();
