@@ -1,10 +1,13 @@
 import "./style.css";
-import getGameState, { GameState } from "./game/gameState";
+import getGameState, {
+  GameState,
+  GameStateWithoutScoreState,
+} from "./game/gameState";
 import addPlayerControlEventListeners from "./player/controls";
 import renderGame from "./game/renderGame";
 import { getCameraBounds } from "./positionUtils";
 
-const handleWindowResize = (gameState: GameState) => {
+const handleWindowResize = (gameState: GameStateWithoutScoreState) => {
   const onWindowResize = () => {
     const gameContext = gameState.context;
     const width = window.innerWidth;
@@ -22,7 +25,9 @@ const handleWindowResize = (gameState: GameState) => {
   };
 };
 
-const initializeEventListeners = (gameState: GameState) => {
+const initializeEventListeners = (
+  gameState: GameStateWithoutScoreState
+): VoidFunction => {
   // make canvas responsive
   const removeWindowResizeEventListeners = handleWindowResize(gameState);
   // add event listeners for player movement
@@ -35,17 +40,39 @@ const initializeEventListeners = (gameState: GameState) => {
   };
 };
 
+const showRestartButton = () => {
+  let restartButton = document.getElementById("restart-button");
+  if (!restartButton) {
+    // create restart button
+    restartButton = document.createElement("button");
+    restartButton.id = "restart-button";
+    restartButton.innerText = "Restart";
+    document.body.appendChild(restartButton);
+  }
+  restartButton.addEventListener("click", () => {
+    window.location.reload();
+  });
+};
+
 const startGame = (): GameState => {
-  const gameState = getGameState();
-  gameState.player.addPlayerToScene();
-  initializeEventListeners(gameState);
-  renderGame(gameState);
+  let removeEventListeners: VoidFunction;
+  let animationFrameID: number;
+  const gameState = getGameState(
+    (state) => {
+      removeEventListeners = initializeEventListeners(state);
+      state.player.addPlayerToScene();
+      state.enemies.spawnEnemiesAtRegularInterval();
+    },
+    (state) => {
+      removeEventListeners();
+      state.enemies.clearEnemies();
+      cancelAnimationFrame(animationFrameID);
+      showRestartButton();
+    }
+  );
+  gameState.scoreState.startTimer();
+  animationFrameID = renderGame(gameState);
   return gameState;
 };
 
-const main = () => {
-  const gameState = startGame();
-  gameState.enemies.spawnEnemiesAtRegularInterval();
-};
-
-main();
+startGame();

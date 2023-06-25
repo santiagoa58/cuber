@@ -53,19 +53,172 @@ class GameContextSingleton {
   }
 }
 
-const getGameState = (playerOptions?: PlayerOptions) => {
+class GameScore {
+  private _score: number;
+  private _highScore: number;
+  private _timer: number;
+  private _isGameOver: boolean;
+  private _timeLimitInSecods: number;
+  private _onGameOver: VoidFunction;
+  private _onGameStart: VoidFunction;
+
+  constructor(
+    gameOverCallback: VoidFunction,
+    onGameStartCallback: VoidFunction,
+    timeLimitInSeconds: number = 60
+  ) {
+    this._isGameOver = false;
+    this._score = 0;
+    this._highScore = this.getHighScoreFromLocalStorage();
+    this._timer = -1;
+    this._timeLimitInSecods = timeLimitInSeconds;
+    this._onGameOver = gameOverCallback;
+    this._onGameStart = onGameStartCallback;
+  }
+
+  get score() {
+    return this._score;
+  }
+
+  set score(value: number) {
+    this._score = value;
+    this.updateScore();
+  }
+
+  get highScore() {
+    const highScoreFromLocalStorage = this.getHighScoreFromLocalStorage();
+    this._highScore = highScoreFromLocalStorage;
+    return this._highScore;
+  }
+
+  set highScore(value: number) {
+    this.setHighScoreInLocalStorage(value);
+    this._highScore = value;
+    this.updateHighScore();
+  }
+
+  private setHighScoreInLocalStorage(value: number) {
+    if (!Number.isFinite(value)) throw new Error("invalid high score");
+    localStorage.setItem("highScore", this._highScore.toString());
+  }
+
+  private getHighScoreFromLocalStorage() {
+    const highScoreFromLocalStorage = localStorage.getItem("highScore");
+    if (highScoreFromLocalStorage == null) {
+      this.setHighScoreInLocalStorage(this._highScore);
+      return this._highScore;
+    }
+    const highScore = Number.parseInt(highScoreFromLocalStorage);
+    if (!Number.isFinite(highScore))
+      throw new Error("invalid high score read from local storage");
+    return highScore;
+  }
+
+  private getScoreElement = () => {
+    const scoreElement = document.getElementById("score");
+    if (scoreElement) {
+      return scoreElement;
+    }
+    // create score element if it doesn't exist
+    const newScoreElement = document.createElement("div");
+    newScoreElement.id = "score";
+    document.body.appendChild(newScoreElement);
+    return newScoreElement;
+  };
+
+  private getHighScoreElement = () => {
+    const highScoreElement = document.getElementById("high-score");
+    if (highScoreElement) {
+      return highScoreElement;
+    }
+    // create high score element if it doesn't exist
+    const newHighScoreElement = document.createElement("div");
+    newHighScoreElement.id = "high-score";
+    document.body.appendChild(newHighScoreElement);
+    return newHighScoreElement;
+  };
+
+  private updateScore = () => {
+    const scoreElement = this.getScoreElement();
+    scoreElement.textContent = `Score: ${this.score}`;
+  };
+
+  private updateHighScore = () => {
+    const highScoreElement = this.getHighScoreElement();
+    highScoreElement.textContent = `High Score: ${this._highScore}`;
+  };
+
+  startTimer = () => {
+    this._isGameOver = false;
+    this._timer = this._timeLimitInSecods;
+    this.score = 0;
+    this.highScore = this.getHighScoreFromLocalStorage();
+    this.updateTimer();
+    this._onGameStart();
+  };
+
+  updateTimer = () => {
+    if (this._isGameOver) return;
+    if (this._timer <= 0) {
+      this._isGameOver = true;
+      return;
+    }
+    this._timer -= 1;
+    this.updateIfGameOver();
+    setTimeout(this.updateTimer, 1000);
+  };
+
+  get isGameOver() {
+    return this._isGameOver;
+  }
+
+  get timer() {
+    return this._timer;
+  }
+
+  private updateIfGameOver = () => {
+    if (this._timer <= 0) {
+      this._isGameOver = true;
+      if (this.score > this.highScore) {
+        this.highScore = this.score;
+      }
+      this._onGameOver();
+      return true;
+    }
+    return false;
+  };
+}
+
+const getGameState = (
+  onGameStart: (state: GameStateWithoutScoreState) => void,
+  onGameEnd: (state: GameStateWithoutScoreState) => void,
+  playerOptions?: PlayerOptions
+) => {
   const context = GameContextSingleton.getInstance();
   const player = new PlayerState(context, playerOptions);
   const enemies = new EnemyState(context);
-  return {
+  const gameStateWithoutScoreState = {
     context,
     player,
     enemies,
-    score: 0,
   };
+  const scoreState = new GameScore(
+    () => onGameEnd(gameStateWithoutScoreState),
+    () => onGameStart(gameStateWithoutScoreState)
+  );
+  return Object.seal({
+    ...gameStateWithoutScoreState,
+    scoreState,
+  });
 };
 
-// type alias for GameContext
-export type GameState = ReturnType<typeof getGameState>;
+export interface GameState {
+  context: Readonly<GameContextSingleton>;
+  player: PlayerState;
+  enemies: EnemyState;
+  scoreState: GameScore;
+}
+
+export type GameStateWithoutScoreState = Omit<GameState, "scoreState">;
 export type GameContext = ReturnType<typeof GameContextSingleton.getInstance>;
 export default getGameState;

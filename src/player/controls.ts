@@ -1,4 +1,4 @@
-import { GameState } from "../game/gameState";
+import { GameStateWithoutScoreState as GameState } from "../game/gameState";
 
 // KEYBOARD CONTROLS
 const keyboardEventHandler =

@@ -17,24 +17,6 @@ const moveEnemy = (enemy: Player, offset: { x?: number; y?: number }) => {
   enemy.position.copy(newPosition);
 };
 
-const getScoreElement = () => {
-  const scoreElement = document.getElementById("score");
-  if (scoreElement) {
-    return scoreElement;
-  }
-  // create score element if it doesn't exist
-  const newScoreElement = document.createElement("div");
-  newScoreElement.id = "score";
-  document.body.appendChild(newScoreElement);
-  return newScoreElement;
-};
-
-const updateScore = (gameState: GameState, newScore: number) => {
-  gameState.score = newScore;
-  const scoreElement = getScoreElement();
-  scoreElement.textContent = `Score: ${gameState.score}`;
-};
-
 const renderMovingEnemies = (gameState: GameState) => {
   // move enemies
   gameState.enemies.getEnemies().forEach((enemy) => {
@@ -45,16 +27,30 @@ const renderMovingEnemies = (gameState: GameState) => {
     }
     // update score
     if (hasCollision) {
-      updateScore(gameState, gameState.score + 1);
+      gameState.scoreState.score = gameState.scoreState.score + 1;
     }
   });
 };
 
-const renderGame = (gameState: GameState) => {
+const renderTimer = (gameState: GameState) => {
+  let timerElement = document.getElementById("timer");
+  // if timerElement does not exist, create it
+  if (!timerElement) {
+    timerElement = document.createElement("div");
+    timerElement.id = "timer";
+    document.body.appendChild(timerElement);
+  }
+  // update timer
+  timerElement.textContent = `Time: ${gameState.scoreState.timer}s`;
+};
+
+const renderGame = (gameState: GameState): number => {
   const context = gameState.context;
   renderMovingEnemies(gameState);
-  requestAnimationFrame(() => renderGame(gameState));
+  renderTimer(gameState);
+  const animationFrameID = requestAnimationFrame(() => renderGame(gameState));
   context.renderer.render(context.scene, context.camera);
+  return animationFrameID;
 };
 
 export default renderGame;

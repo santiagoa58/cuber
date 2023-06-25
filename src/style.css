@@ -20,12 +20,44 @@ body {
   -webkit-text-size-adjust: 100%;
 }
 
-#score {
+#score,
+#high-score,
+#timer {
   position: absolute;
-  top: 0;
-  right: 0;
   padding: 0.5rem;
   font-size: 1.5rem;
   font-weight: 700;
   color: #fff;
+}
+
+#score {
+  top: 0;
+  right: 0;
+}
+
+#high-score {
+  top: 2rem;
+  right: 0;
+}
+
+#timer {
+  top: 4rem;
+  right: 0;
+}
+
+#restart-button {
+  display: block;
+  position: absolute;
+  top: 50%;
+  right: 50%;
+  transform: translate(50%, -50%);
+  padding: 0.5rem 1rem;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fff;
+  background-color: #242424;
+  border: 0;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  text-transform: uppercase;
 }
