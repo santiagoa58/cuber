@@ -69,7 +69,7 @@ class GameScore {
   ) {
     this._isGameOver = false;
     this._score = 0;
-    this._highScore = this.getHighScoreFromLocalStorage();
+    this._highScore = this.getHighScoreFromLocalStorage() ?? 0;
     this._timer = -1;
     this._timeLimitInSecods = timeLimitInSeconds;
     this._onGameOver = gameOverCallback;
@@ -86,7 +86,7 @@ class GameScore {
   }
 
   get highScore() {
-    const highScoreFromLocalStorage = this.getHighScoreFromLocalStorage();
+    const highScoreFromLocalStorage = this.getHighScoreFromLocalStorage() ?? 0;
     this._highScore = highScoreFromLocalStorage;
     return this._highScore;
   }
@@ -99,19 +99,18 @@ class GameScore {
 
   private setHighScoreInLocalStorage(value: number) {
     if (!Number.isFinite(value)) throw new Error("invalid high score");
-    localStorage.setItem("highScore", this._highScore.toString());
+    localStorage.setItem("highScore", value.toString());
   }
 
-  private getHighScoreFromLocalStorage() {
+  private getHighScoreFromLocalStorage(): number | null {
     const highScoreFromLocalStorage = localStorage.getItem("highScore");
-    if (highScoreFromLocalStorage == null) {
-      this.setHighScoreInLocalStorage(this._highScore);
-      return this._highScore;
+    if (highScoreFromLocalStorage != null) {
+      const highScore = Number.parseInt(highScoreFromLocalStorage);
+      if (Number.isFinite(highScore)) {
+        return highScore;
+      }
     }
-    const highScore = Number.parseInt(highScoreFromLocalStorage);
-    if (!Number.isFinite(highScore))
-      throw new Error("invalid high score read from local storage");
-    return highScore;
+    return null;
   }
 
   private getScoreElement = () => {
@@ -152,7 +151,7 @@ class GameScore {
     this._isGameOver = false;
     this._timer = this._timeLimitInSecods;
     this.score = 0;
-    this.highScore = this.getHighScoreFromLocalStorage();
+    this.highScore = this.getHighScoreFromLocalStorage() ?? 0;
     this.updateTimer();
     this._onGameStart();
   };
