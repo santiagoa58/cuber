@@ -55,8 +55,8 @@ class GameContextSingleton {
 
 const getGameState = (playerOptions?: PlayerOptions) => {
   const context = GameContextSingleton.getInstance();
-  const player = new PlayerState(playerOptions);
-  const enemies = new EnemyState();
+  const player = new PlayerState(context, playerOptions);
+  const enemies = new EnemyState(context);
   return {
     context,
     player,

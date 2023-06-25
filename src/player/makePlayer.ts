@@ -47,10 +47,14 @@ export type EnemyOptions = PlayerOptions &
   Required<Pick<PlayerOptions, "position">>;
 
 export const makeEnemy = (options: EnemyOptions): Player => {
-  const color = options.color ?? 0xff0000;
-  const enemy = makePlayer({ ...options, color });
-  // Move down 0.05 units per frame by default
-  enemy.userData = { speed: -0.05, ...options?.userData };
+  const defaultOptions: Partial<EnemyOptions> = {
+    color: 0xff0000,
+    userData: {
+      speed: -0.05,
+    },
+  };
+  const enemy = makePlayer({ ...defaultOptions, ...options });
+  enemy.userData = { ...defaultOptions.userData, ...options?.userData };
   return enemy;
 };
 

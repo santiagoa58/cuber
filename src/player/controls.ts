@@ -3,6 +3,8 @@ import { GameState } from "../game/gameState";
 // KEYBOARD CONTROLS
 const keyboardEventHandler =
   (gameState: GameState) => (event: KeyboardEvent) => {
+    gameState.player.resetPlayerSpeed();
+    gameState.enemies.resetEnemiesSpeed();
     const playerSpeed = gameState.player.getPlayer().userData.speed;
     if (!playerSpeed) {
       throw new Error("Player speed not set");
@@ -11,16 +13,16 @@ const keyboardEventHandler =
     //move player with arrow keys
     switch (event.key) {
       case "ArrowUp":
-        gameState.player.move(gameState.context, { y: offset });
+        gameState.player.move({ y: offset });
         break;
       case "ArrowDown":
-        gameState.player.move(gameState.context, { y: -offset });
+        gameState.player.move({ y: -offset });
         break;
       case "ArrowLeft":
-        gameState.player.move(gameState.context, { x: -offset });
+        gameState.player.move({ x: -offset });
         break;
       case "ArrowRight":
-        gameState.player.move(gameState.context, { x: offset });
+        gameState.player.move({ x: offset });
         break;
     }
   };
@@ -111,15 +113,11 @@ const updateGameStateOnTouchMove = (
     throw new Error("Player speed not set");
   }
 
-  // Normalize factors, adjust these to get the desired sensitivity
-  const normalizeFactorX = 40;
-  const normalizeFactorY = 40;
-
-  const dx = (touch.clientX - ongoingTouch.clientX) / normalizeFactorX;
-  const dy = (touch.clientY - ongoingTouch.clientY) / normalizeFactorY;
+  const dx = touch.clientX - ongoingTouch.clientX;
+  const dy = touch.clientY - ongoingTouch.clientY;
 
   // Update position proportionally to the touch movement
-  gameState.player.move(gameState.context, { x: dx * speed, y: -dy * speed });
+  gameState.player.move({ x: dx * speed, y: -dy * speed });
 };
 
 const updateOngoingTouches = (
@@ -145,6 +143,8 @@ const touchEventHandler = (
   switch (eventname) {
     case "touchstart":
       return (event: TouchEvent) => {
+        gameState.player.updatePlayerSpeed(0.01);
+        gameState.enemies.updateEnemiesSpeed(-0.1);
         ONGOING_TOUCHES = handleTouchStart(event, ONGOING_TOUCHES);
       };
     case "touchmove":
@@ -165,42 +165,11 @@ const touchEventHandler = (
   }
 };
 
-const getMovePlayerEventListeners = (
-  gameState: GameState,
-  eventname: keyof WindowEventMap
-): ((event: any) => void) => {
-  // keyboard event listeners
-  switch (eventname) {
-    case "keydown":
-    case "keyup":
-    case "keypress":
-      return keyboardEventHandler(gameState);
-    case "touchstart":
-    case "touchmove":
-    case "touchend":
-      return touchEventHandler(gameState, eventname);
-    default:
-      throw new Error("Invalid event name");
-  }
-};
-
 const addPlayerControlEventListeners = (gameState: GameState) => {
-  const keydownEventListener = getMovePlayerEventListeners(
-    gameState,
-    "keydown"
-  );
-  const touchstartEventListener = getMovePlayerEventListeners(
-    gameState,
-    "touchstart"
-  );
-  const touchmoveEventListener = getMovePlayerEventListeners(
-    gameState,
-    "touchmove"
-  );
-  const touchendEventListener = getMovePlayerEventListeners(
-    gameState,
-    "touchend"
-  );
+  const keydownEventListener = keyboardEventHandler(gameState);
+  const touchstartEventListener = touchEventHandler(gameState, "touchstart");
+  const touchmoveEventListener = touchEventHandler(gameState, "touchmove");
+  const touchendEventListener = touchEventHandler(gameState, "touchend");
 
   // add event listeners for player movement
   document.addEventListener("keydown", keydownEventListener);

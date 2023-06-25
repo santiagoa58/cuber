@@ -13,7 +13,8 @@ import {
   getUpdatedPlayerPosition,
 } from "../positionUtils";
 
-const DEFAULT_SPEED = 1;
+const DEFAULT_PLAYER_SPEED = 1;
+const DEFAULT_ENEMY_SPEED = -0.05;
 
 /**
  * PLAYER STATE MANAGEMENT
@@ -21,9 +22,14 @@ const DEFAULT_SPEED = 1;
 export class PlayerState {
   private player: Player;
   private baseSpeed: number;
+  private gameContext: Readonly<GameContext>;
 
-  constructor(playerOptions?: PlayerOptions) {
-    this.baseSpeed = playerOptions?.userData?.speed ?? DEFAULT_SPEED;
+  constructor(
+    gameContext: Readonly<GameContext>,
+    playerOptions?: PlayerOptions
+  ) {
+    this.gameContext = gameContext;
+    this.baseSpeed = playerOptions?.userData?.speed ?? DEFAULT_PLAYER_SPEED;
     const userData = { ...playerOptions?.userData, speed: this.baseSpeed };
     this.player = makePlayer({ ...playerOptions, userData });
   }
@@ -36,34 +42,38 @@ export class PlayerState {
     this.player = player;
   };
 
-  addPlayerToScene = (gameContext: GameContext) => {
-    gameContext.scene.add(this.player);
+  addPlayerToScene = () => {
+    this.gameContext.scene.add(this.player);
   };
 
-  updatePlayerPosition = (gameContext: GameContext, previousBounds: Bounds) => {
-    updatePlayerPositionUtil(gameContext, previousBounds, this.player);
-    this.updatePlayerSpeed(gameContext);
+  updatePlayerPosition = (previousBounds: Bounds) => {
+    updatePlayerPositionUtil(this.gameContext, previousBounds, this.player);
+    this.updatePlayerSpeed();
   };
 
-  updatePlayerSpeed = (gameContext: GameContext, speed?: number) => {
+  updatePlayerSpeed = (speed?: number) => {
     if (speed != null) {
-      this.player.userData.speed = speed;
-      return;
+      this.baseSpeed = speed;
     }
-    const width = Math.abs(gameContext.camera.right - gameContext.camera.left);
-    const height = Math.abs(gameContext.camera.top - gameContext.camera.bottom);
+    const width = Math.abs(
+      this.gameContext.camera.right - this.gameContext.camera.left
+    );
+    const height = Math.abs(
+      this.gameContext.camera.top - this.gameContext.camera.bottom
+    );
     const aspectRatio = width / height;
     const speedScalingFactor = Math.max(aspectRatio, 1);
     const newSpeed = this.baseSpeed * speedScalingFactor;
     this.player.userData.speed = newSpeed;
   };
 
-  move = (
-    gameContext: GameContext,
-    direction: { x?: number; y?: number; z?: number }
-  ): void => {
+  resetPlayerSpeed = () => {
+    this.updatePlayerSpeed(DEFAULT_PLAYER_SPEED);
+  };
+
+  move = (direction: { x?: number; y?: number; z?: number }): void => {
     const position = getUpdatedPlayerPosition(this.player, direction);
-    if (!isPositionOutOfBounds(position, gameContext)) {
+    if (!isPositionOutOfBounds(position, this.gameContext)) {
       this.player.position.copy(position);
     }
   };
@@ -75,9 +85,20 @@ export class PlayerState {
 export class EnemyState {
   private enemies: Player[];
   private spawnIntervalID: ReturnType<typeof setInterval> | null = null;
+  private enemiesBaseSpeed: number = DEFAULT_ENEMY_SPEED;
+  private gameContext: Readonly<GameContext>;
 
-  constructor(enemies: Player[] = []) {
-    this.enemies = [...enemies];
+  constructor(gameContext: Readonly<GameContext>, enemies: Player[] = []) {
+    this.gameContext = gameContext;
+    const speed = enemies[0]?.userData?.speed ?? this.enemiesBaseSpeed;
+    if (speed != this.enemiesBaseSpeed) {
+      this.enemiesBaseSpeed = speed;
+    }
+    // ensure all enemies have the same speed
+    this.enemies = enemies.map((enemy) => {
+      enemy.userData.speed = this.enemiesBaseSpeed;
+      return enemy;
+    });
   }
 
   getEnemies = (): Player[] => {
@@ -89,60 +110,63 @@ export class EnemyState {
   };
 
   // add enemy to scene
-  addEnemyToScene = (
-    gameContext: GameContext,
-    options: EnemyOptions
-  ): Player[] => {
-    const enemy = makeEnemy(options);
-    gameContext.scene.add(enemy);
+  addEnemyToScene = (options: EnemyOptions): Player[] => {
+    const userData = { ...options.userData, speed: this.enemiesBaseSpeed };
+    const enemy = makeEnemy({ ...options, userData });
+    this.gameContext.scene.add(enemy);
     const newEnemies = this.getEnemies().concat(enemy);
     this.setEnemies(newEnemies);
     return newEnemies;
   };
 
   // remove enemy from scene
-  removeEnemyFromScene = (
-    gameContext: GameContext,
-    enemy: Player
-  ): Player[] => {
-    gameContext.scene.remove(enemy);
+  removeEnemyFromScene = (enemy: Player): Player[] => {
+    this.gameContext.scene.remove(enemy);
     const newEnemies = this.getEnemies().filter((e) => e.id !== enemy.id);
     this.setEnemies(newEnemies);
     return newEnemies;
   };
 
   // remove all enemies from scene
-  removeAllEnemiesFromScene = (gameContext: GameContext): Player[] => {
-    gameContext.scene.remove(...this.getEnemies());
+  removeAllEnemiesFromScene = (): Player[] => {
+    this.gameContext.scene.remove(...this.getEnemies());
     this.setEnemies([]);
     return this.getEnemies();
   };
 
-  updateEnemiesPosition = (
-    gameContext: GameContext,
-    previousBounds: Bounds
-  ) => {
+  updateEnemiesPosition = (previousBounds: Bounds) => {
     this.getEnemies().forEach((enemy) => {
-      updatePlayerPositionUtil(gameContext, previousBounds, enemy);
+      updatePlayerPositionUtil(this.gameContext, previousBounds, enemy);
     });
-    this.resetSpawnEnemiesInterval(gameContext);
+    this.resetSpawnEnemiesInterval();
   };
 
-  spawnEnemiesAtRegularInterval = (
-    gameContext: GameContext,
-    interval: number = 1000
-  ) => {
+  updateEnemiesSpeed = (speed: number) => {
+    if (speed === this.enemiesBaseSpeed) {
+      return;
+    }
+    this.enemiesBaseSpeed = speed;
+    this.getEnemies().forEach((enemy) => {
+      enemy.userData.speed = this.enemiesBaseSpeed;
+    });
+  };
+
+  resetEnemiesSpeed = () => {
+    this.updateEnemiesSpeed(DEFAULT_ENEMY_SPEED);
+  };
+
+  spawnEnemiesAtRegularInterval = (interval: number = 1000) => {
     // if already spawning enemies, do nothing
     if (this.spawnIntervalID !== null) {
       return;
     }
-    const leftBound = gameContext.camera.left;
-    const rightBound = gameContext.camera.right;
-    const topBound = gameContext.camera.top;
-    const bottomBound = gameContext.camera.bottom;
+    const leftBound = this.gameContext.camera.left;
+    const rightBound = this.gameContext.camera.right;
+    const topBound = this.gameContext.camera.top;
+    const bottomBound = this.gameContext.camera.bottom;
 
     this.spawnIntervalID = setInterval(() => {
-      this.addEnemyToScene(gameContext, {
+      this.addEnemyToScene({
         position: getRandomPosition(
           {
             xmin: leftBound,
@@ -163,18 +187,18 @@ export class EnemyState {
     }
   };
 
-  resetSpawnEnemiesInterval = (gameContext: GameContext) => {
+  resetSpawnEnemiesInterval = () => {
     this.clearSpawnEnemiesInterval();
-    this.spawnEnemiesAtRegularInterval(gameContext);
+    this.spawnEnemiesAtRegularInterval();
   };
 
-  resetEnemies = (gameContext: GameContext) => {
-    this.removeAllEnemiesFromScene(gameContext);
-    this.resetSpawnEnemiesInterval(gameContext);
+  resetEnemies = () => {
+    this.removeAllEnemiesFromScene();
+    this.resetSpawnEnemiesInterval();
   };
 
-  clearEnemies = (gameContext: GameContext) => {
-    this.removeAllEnemiesFromScene(gameContext);
+  clearEnemies = () => {
+    this.removeAllEnemiesFromScene();
     this.clearSpawnEnemiesInterval();
   };
 }

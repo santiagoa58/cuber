@@ -12,8 +12,8 @@ const handleWindowResize = (gameState: GameState) => {
     const previousCameraBounds = getCameraBounds(gameState.context);
     gameContext.updateCameraBounds();
     gameContext.renderer.setSize(width, height);
-    gameState.player.updatePlayerPosition(gameContext, previousCameraBounds);
-    gameState.enemies.updateEnemiesPosition(gameContext, previousCameraBounds);
+    gameState.player.updatePlayerPosition(previousCameraBounds);
+    gameState.enemies.updateEnemiesPosition(previousCameraBounds);
   };
   window.addEventListener("resize", onWindowResize);
 
@@ -37,7 +37,7 @@ const initializeEventListeners = (gameState: GameState) => {
 
 const startGame = (): GameState => {
   const gameState = getGameState();
-  gameState.player.addPlayerToScene(gameState.context);
+  gameState.player.addPlayerToScene();
   initializeEventListeners(gameState);
   renderGame(gameState);
   return gameState;
@@ -45,7 +45,7 @@ const startGame = (): GameState => {
 
 const main = () => {
   const gameState = startGame();
-  gameState.enemies.spawnEnemiesAtRegularInterval(gameState.context);
+  gameState.enemies.spawnEnemiesAtRegularInterval();
 };
 
 main();

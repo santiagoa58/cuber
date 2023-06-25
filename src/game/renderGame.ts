@@ -41,7 +41,7 @@ const renderMovingEnemies = (gameState: GameState) => {
     moveEnemy(enemy, { y: enemy.userData.speed });
     const hasCollision = checkCollision(gameState.player.getPlayer(), enemy);
     if (isPlayerOutOfBounds(enemy, gameState.context) || hasCollision) {
-      gameState.enemies.removeEnemyFromScene(gameState.context, enemy);
+      gameState.enemies.removeEnemyFromScene(enemy);
     }
     // update score
     if (hasCollision) {
